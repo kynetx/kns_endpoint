@@ -1,6 +1,9 @@
 # Kynetx Endpoint Ruby Gem
 The Kynetx Endpoint Gem was developed to allow developers of easily tie their existing or new ruby applications to the Kynetx Network System (KNS) and raise events on that platform.  The gem provides a simple DSL for raising (signaling) events on KNS.
 
+## Installation
+    gem install kns_endpoint
+
 ## Example
     class TestEndpoint < Kynetx::Endpoint
       ruleset :a18x26
