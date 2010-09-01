@@ -98,11 +98,11 @@ Sessions are also maintained through multiple calls to the KNS Event API so that
 
 If you want to specify a session, you can do so by setting the session attribute manually:
 
-  @endpoint.session = "3adef184a0779345fd422369a4e21a25"
+    @endpoint.session = "3adef184a0779345fd422369a4e21a25"
 
 If you want don't want to maintain session, you can turn it off:
 
-  @endpoint.use_single_session = false
+    @endpoint.use_single_session = false
 
 ## Links
 - http://docs.kynetx.com/kns/kynetx-network-services-kns/#Event
