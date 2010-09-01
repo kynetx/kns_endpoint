@@ -93,8 +93,8 @@ The KRL for this endpoint looks like this:
 ## Session Management
 Sessions are also maintained through multiple calls to the KNS Event API so that entity variables can be maintained. So for the above example, you can perform the following:
 
-   @endpoint.signal(:write_entity_var, :message => "Testing 123")
-   @endpoint.signal(:read_entity_var) # => ["Testing 123"]
+    @endpoint.signal(:write_entity_var, :message => "Testing 123")
+    @endpoint.signal(:read_entity_var) # => ["Testing 123"]
 
 If you want to specify a session, you can do so by setting the session attribute manually:
 
