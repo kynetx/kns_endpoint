@@ -1,22 +1,23 @@
-require 'httparty'
+require 'net/https'
+require 'open-uri'
+require 'json'
+
 module Kynetx
 
   class Endpoint
+    attr_accessor :session
 
     @@events = {}
     @@directives = {}
+    @@use_single_session = true;
 
     def initialize
     end
 
 
     def self.event(e, params={}, &block)
-      
       @@events[e] = { :params => params }
-
       @@events[e][:block] = block_given? ? block : lambda { |p| p }
-     
-
     end
 
     def self.directive(d, &block)
@@ -25,12 +26,11 @@ module Kynetx
     end
 
     def self.ruleset(r); @@ruleset = r end
-
     def self.domain(d); @@domain = d end
+    def use_single_session; @@use_single_session end
+    def use_single_session=(uss); @@use_single_session = uss end
 
-
-
-    def signal(e, params)
+    def signal(e, params={})
       run_event(e, params)
     end
 
@@ -41,15 +41,52 @@ module Kynetx
  
       # setup the parameters and call the block
 
-      @@events[e][:block].call(params) 
+      if @@events.keys.include? e
+        @@events[e][:block].call(params) 
+      else
+        raise "Undefined event #{e.to_s}"
+      end
+
 
       # run the event
- 
-      resp = HTTParty.get "http://cs.kobj.net/blue/event/#{@@domain.to_s}/#{e.to_s}/#{@@ruleset.to_s}", :query => params
+
+      kns_json = {"directives" => []}
+      
+      begin
+        api_call = "https://cs.kobj.net/blue/event/#{@@domain.to_s}/#{e.to_s}/#{@@ruleset.to_s}"
+        uri = URI.parse(api_call)
+        http_session = Net::HTTP.new(uri.host, uri.port)
+        http_session.verify_mode = OpenSSL::SSL::VERIFY_NONE
+        http_session.use_ssl = true
+    
+        headers = {
+          'Host'=>  uri.host,
+        }
+
+        headers["Cookie"] = "SESSION_ID=#{@session}" if @session && @@use_single_session
+
+        timeout(30) do
+          http_session.start { |http|
+            req = Net::HTTP::Post.new(uri.path)
+            headers.each{|key, val| req.add_field(key, val)}
+            resp, data = http.request(req, params.to_url_params)
+            @session = parse_cookie(resp, 'SESSION_ID') 
+
+            raise "Unexpected response from KNS (HTTP Error: #{resp.code} - #{resp.message})" unless resp.code == '200'
+            begin
+              kns_json = JSON.parse(data)
+            rescue
+              raise "Unexpected response from KNS (#{data})"
+            end
+          }
+        end
+      rescue Exception => e
+        raise "Unable to connect to KNS. (#{e.message})"
+      end
 
       # execute the returned directives
       directive_output = []
-      resp["directives"].each do |d|
+      kns_json["directives"].each do |d|
         o = run_directive(d["name"].to_sym, symbolize_keys(d["options"])) if @@directives.keys.include?(d["name"].to_sym)
         directive_output.push o
       end
@@ -82,11 +119,27 @@ module Kynetx
       result  
       }  
     end 
+
+    def parse_cookie(resp_hash, cookie)
+      cookie_str = resp_hash['set-cookie']
+      cookies = {}
+      cookie_str.split(";").map{|e| k,v = e.split('='); cookies[k] = v}
+      return cookies[cookie]
+    end
     
-
-
   end
 
+end
+
+class Hash
+  def to_url_params
+    elements = []
+    self.each_pair do |k,v|
+      elements << "#{URI.escape(k.to_s)}=#{URI.escape(v.to_s)}"
+    end
+    elements.join('&')
+  end
 
 end
+
 
