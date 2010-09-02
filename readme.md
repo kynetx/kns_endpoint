@@ -23,10 +23,17 @@ The Kynetx Endpoint Gem was developed to allow developers of easily tie their ex
       end
     end
 
-In the above example, a class is created which inherits from Kynetx::Endpoint.  This class can then be instantiated and used to signal events.  Like so:
+In the above example, a class is created which inherits from Kynetx::Endpoint.  This class can then be use and used to signal events.  Like so:
 
-    @endpoint = TestEndpoint.new
+    TestEndpoint.signal(:echo, {:message => "Hello World"}, :a18x26) # => ["Hello World"]
+    TestEndpoint.echo(:a18x26, :message => "Hello World") # => ["Hello World"]
+         
+    @endpoint = TestEndpoint.new(:ruleset => :a18x26)
     @endpoint.signal(:echo, :message => "Hello World") # => ["Hello World"]
+    @endpoint.echo(:message => "Hello World")  # => ["Hello World"]
+
+    # Override the default ruleset and send to a different ruleset 
+    @endpoint.echo(:a18x27, :message => "Hello World") # => ["Hello World"]
 
 When the signal method is called, the echo event is raised and the "message" parameter is sent to the KNS event.  If that event sends a directive to "say", then the block provided to the :say directive is executed with "d" being a hash of the directive options. The signal method returns an array with the return values from each of the directive blocks.
 
@@ -93,6 +100,7 @@ The KRL for this endpoint looks like this:
 ## Session Management
 Sessions are also maintained through multiple calls to the KNS Event API so that entity variables can be maintained. So for the above example, you can perform the following:
 
+    @endpoint = TestEndpoint.new(:ruleset => :a18x26)
     @endpoint.signal(:write_entity_var, :message => "Testing 123")
     @endpoint.signal(:read_entity_var) # => ["Testing 123"]
 

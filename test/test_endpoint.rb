@@ -3,7 +3,6 @@ describe Kynetx::Endpoint do
 
   before :all do
     class TestEndpoint < Kynetx::Endpoint
-      ruleset :a18x26
       domain :test_endpoint
        
       event :echo
@@ -20,7 +19,7 @@ describe Kynetx::Endpoint do
       end
     end
 
-    @endpoint = TestEndpoint.new
+    @endpoint = TestEndpoint.new(:ruleset => :a18x26)
   end
 
   it "should set use_single_session to true by default" do
@@ -37,7 +36,7 @@ describe Kynetx::Endpoint do
 
   it "should set a session entity variable and keep it over multiple signals" do
     @endpoint.signal(:write_entity_var, :message => "Testing 123")
-    @endpoint.signal(:read_entity_var, {}).should include "Testing 123"
+    @endpoint.signal(:read_entity_var).should include "Testing 123"
   end
 
   it "should maintain a session for multiple calls" do
@@ -48,7 +47,7 @@ describe Kynetx::Endpoint do
     @endpoint.signal(:read_entity_var)
     @endpoint.session.should eql session
 
-    @endpoint.signal(:read_entity_var, {})
+    @endpoint.signal(:read_entity_var)
     @endpoint.session.should eql session
 
   end
@@ -57,13 +56,30 @@ describe Kynetx::Endpoint do
     @endpoint.session = nil
     @endpoint.use_single_session = false
 
-    @endpoint.signal(:read_entity_var, {})
+    @endpoint.signal(:read_entity_var)
     session = @endpoint.session
 
-    @endpoint.signal(:read_entity_var, {})
+    @endpoint.signal(:read_entity_var)
     @endpoint.session.should_not eql session
 
   end
+
+  it "should allow me to call events as methods." do
+    @endpoint.echo(:message => "Hello World").should include "Hello World"
+  end
+
+  it "should allow me to specify the ruleset as a first parameter when calling the event as a method" do
+    @endpoint.echo(:a18x26, :message => "Hello World").should include "Hello World"
+  end
+
+  it "should allow me to raise an event without instantiation." do
+    TestEndpoint.echo(:a18x26, :message => "Hello World").should include "Hello World"
+  end
+
+  it "should allow me to call signal without instantiation" do
+    TestEndpoint.signal(:echo, {:message => "Hello World"}, :a18x26)
+  end
+   
 
 
 end

@@ -11,7 +11,8 @@ module Kynetx
     @@directives = {}
     @@use_single_session = true;
 
-    def initialize
+    def initialize(opts={})
+      @@ruleset = opts[:ruleset] if opts[:ruleset]
     end
 
 
@@ -30,14 +31,48 @@ module Kynetx
     def use_single_session; @@use_single_session end
     def use_single_session=(uss); @@use_single_session = uss end
 
-    def signal(e, params={})
-      run_event(e, params)
+    def signal(e, params={}, ruleset=nil)
+      raise "Undefined ruleset" unless @@ruleset || ruleset
+      
+      run_event(e, ruleset || @@ruleset, params)
     end
 
+    def self.signal(e, params, ruleset)
+      tmp_endpoint = self.new({:ruleset => ruleset})
+      tmp_endpoint.signal(e, params)
+    end
+
+    # allow calling events directly
+    def method_missing(meth, *args)
+      if @@events.keys.include? meth.to_sym
+        ruleset = nil
+        params = {}
+
+        if args.first.class == Symbol
+          ruleset = args.first 
+          params = args.last if args.length > 1
+        else
+          params = args.first if args.first.class == Hash
+        end
+
+
+        return run_event(meth.to_sym, ruleset || @@ruleset, params)
+
+      else
+        super
+      end
+    end
+
+    def self.method_missing(meth, *args)
+      raise "Undefined ruleset" unless args.first.class == Symbol
+      params = args.length > 1 ? args.last : {}
+      e = self.new({:ruleset => args.first})
+      e.signal(meth.to_sym, params)
+    end
 
     private
 
-    def run_event(e, params)
+    def run_event(e, ruleset, params)
  
       # setup the parameters and call the block
 
@@ -53,7 +88,9 @@ module Kynetx
       kns_json = {"directives" => []}
       
       begin
-        api_call = "https://cs.kobj.net/blue/event/#{@@domain.to_s}/#{e.to_s}/#{@@ruleset.to_s}"
+        raise "Undefined Domain" unless @@domain
+        
+        api_call = "https://cs.kobj.net/blue/event/#{@@domain.to_s}/#{e.to_s}/#{ruleset}"
         uri = URI.parse(api_call)
         http_session = Net::HTTP.new(uri.host, uri.port)
         http_session.verify_mode = OpenSSL::SSL::VERIFY_NONE
