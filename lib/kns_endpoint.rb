@@ -91,6 +91,7 @@ module Kynetx
         raise "Undefined Domain" unless @@domain
         
         api_call = "https://cs.kobj.net/blue/event/#{@@domain.to_s}/#{e.to_s}/#{ruleset}"
+        puts api_call if $KNS_ENDPOINT_DEBUG
         uri = URI.parse(api_call)
         http_session = Net::HTTP.new(uri.host, uri.port)
         http_session.verify_mode = OpenSSL::SSL::VERIFY_NONE
@@ -108,6 +109,12 @@ module Kynetx
             headers.each{|key, val| req.add_field(key, val)}
             resp, data = http.request(req, params.to_url_params)
             @session = parse_cookie(resp, 'SESSION_ID') 
+
+            puts 'Code = ' + resp.code if $KNS_ENDPOINT_DEBUG
+            puts 'Message = ' + resp.message if $KNS_ENDPOINT_DEBUG
+            resp.each {|key, val| puts key + ' = ' + val} if $KNS_ENDPOINT_DEBUG
+            puts "Data = \n" + data if $KNS_ENDPOINT_DEBUG
+            
 
             raise "Unexpected response from KNS (HTTP Error: #{resp.code} - #{resp.message})" unless resp.code == '200'
             begin
@@ -143,6 +150,8 @@ module Kynetx
     end
 
     def symbolize_keys(hash)  
+      return {} unless hash.class == Hash
+
       hash.inject({}){|result, (key, value)|  
         new_key = case key  
                   when String then key.to_sym  

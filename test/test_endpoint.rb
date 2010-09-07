@@ -1,4 +1,4 @@
-require '../lib/endpoint'
+require '../lib/kns_endpoint'
 describe Kynetx::Endpoint do
 
   before :all do
