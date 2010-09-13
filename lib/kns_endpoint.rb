@@ -107,6 +107,7 @@ module Kynetx
           http_session.start { |http|
             req = Net::HTTP::Post.new(uri.path)
             headers.each{|key, val| req.add_field(key, val)}
+            puts "Params = \n#{params.to_url_params}" if $KNS_ENDPOINT_DEBUG
             resp, data = http.request(req, params.to_url_params)
             @session = parse_cookie(resp, 'SESSION_ID') 
 
