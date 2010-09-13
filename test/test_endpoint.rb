@@ -80,6 +80,8 @@ describe Kynetx::Endpoint do
     TestEndpoint.signal(:echo, {:message => "Hello World"}, :a18x26)
   end
    
-
+  it "should allow me to raise an event without instantition if the ruleset is defined." do
+    TestEndpoint.echo({:message => "Hello World"}).should include "Hello World"
+  end
 
 end
