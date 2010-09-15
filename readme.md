@@ -40,7 +40,7 @@ In the above example, a class is created which inherits from Kynetx::Endpoint.  
     # if you wish to override the default class setup you can do so like so with an object:
     @endpoint.environment = :development
     @endpoint.ruleset = :a18x30
-    @dev_endpoint.echo({:message => "Hello World"}) # => ["DEVELOPMENT"]
+    @endpoint.echo({:message => "Hello World"}) # => ["DEVELOPMENT"]
 
     # if you don't have an object to call but are using the class, you can do this instead:
     TestEndpoint.ruleset :a18x30
