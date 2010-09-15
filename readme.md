@@ -25,27 +25,27 @@ The Kynetx Endpoint Gem was developed to allow developers of easily tie their ex
 
 In the above example, a class is created which inherits from Kynetx::Endpoint.  This class can then be use and used to signal events.  Like so:
 
-   @endpoint = TestEndpoint.new
-   # the new method also takes an options Hash that can be used to overwrite the defaults defined in the class. 
-   # for example: 
-   # {:ruleset => :a18x26, :environment => :development, :use_session => false}
+    @endpoint = TestEndpoint.new
+    # the new method also takes an options Hash that can be used to overwrite the defaults defined in the class. 
+    # for example: 
+    # {:ruleset => :a18x26, :environment => :development, :use_session => false}
 
-   @endpoint.signal(:echo, :message => "Hello World") # => ["Hello World"]
-   @endpoint.echo(:message => "Hello World")  # => ["Hello World"]
+    @endpoint.signal(:echo, :message => "Hello World") # => ["Hello World"]
+    @endpoint.echo(:message => "Hello World")  # => ["Hello World"]
 
-   # Events can also be called without instantiating the class, like so:
-   TestEndpoint.signal(:echo, {:message => "Hello World"})  # => ["Hello World"]
-   TestEndpoint.echo({:message => "Hello World"})  # => ["Hello World"]
+    # Events can also be called without instantiating the class, like so:
+    TestEndpoint.signal(:echo, {:message => "Hello World"})  # => ["Hello World"]
+    TestEndpoint.echo({:message => "Hello World"})  # => ["Hello World"]
 
-   # if you wish to override the default class setup you can do so like so with an object:
-   @endpoint.environment = :development
-   @endpoint.ruleset = :a18x30
-   @dev_endpoint.echo({:message => "Hello World"}) # => ["DEVELOPMENT"]
+    # if you wish to override the default class setup you can do so like so with an object:
+    @endpoint.environment = :development
+    @endpoint.ruleset = :a18x30
+    @dev_endpoint.echo({:message => "Hello World"}) # => ["DEVELOPMENT"]
 
-   # if you don't have an object to call but are using the class, you can do this instead:
-   TestEndpoint.ruleset :a18x30
-   TestEndpoint.environment :development
-   TestEndpoint.echo({:message => "Hello World"}) # => ["DEVELOPMENT"]
+    # if you don't have an object to call but are using the class, you can do this instead:
+    TestEndpoint.ruleset :a18x30
+    TestEndpoint.environment :development
+    TestEndpoint.echo({:message => "Hello World"}) # => ["DEVELOPMENT"]
 
 When the signal method is called, the echo event is raised and the "message" parameter is sent to the KNS event.  If that event sends a directive to "say", then the block provided to the :say directive is executed with "d" being a hash of the directive options. The signal method returns an array with the return values from each of the directive blocks.
 
