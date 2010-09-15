@@ -141,7 +141,7 @@ If you want to specify a session, you can do so by setting the session attribute
 
 If you want don't want to maintain session, you can turn it off:
 
-    @endpoint.use_single_session = false
+    @endpoint.use_session = false
 
 ## Links
 - http://docs.kynetx.com/kns/kynetx-network-services-kns/#Event
