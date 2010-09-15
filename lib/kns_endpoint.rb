@@ -1,20 +1,30 @@
-require 'net/https'
-require 'open-uri'
+require 'rest_client'
 require 'json'
 
 module Kynetx
 
   class Endpoint
-    attr_accessor :session
+    attr_accessor :session, :environment, :ruleset, :use_session
 
     @@events = {}
     @@directives = {}
-    @@use_single_session = true;
+    @@use_session = true;
+    @@environment = :production
+    @@ruleset = nil
 
     def initialize(opts={})
-      @@ruleset = opts[:ruleset] if opts[:ruleset]
+      @environment = opts[:environment] if opts[:environment]
+      @ruleset = opts[:ruleset] if opts[:ruleset]
+      @use_session = opts[:use_session] if opts[:use_session]
+
+      # set the defaults
+      @environment ||= @@environment
+      @use_session ||= @@use_session
+      @ruleset ||= @@ruleset
+      raise "Undefined ruleset." unless @ruleset
     end
 
+    ## Endpoint DSL
 
     def self.event(e, params={}, &block)
       @@events[e] = { :params => params }
@@ -28,102 +38,95 @@ module Kynetx
 
     def self.ruleset(r); @@ruleset = r end
     def self.domain(d); @@domain = d end
-    def use_single_session; @@use_single_session end
-    def use_single_session=(uss); @@use_single_session = uss end
+    def self.environment(e); @@environment = e end
+    def self.use_session(s); @@use_session = s end
 
-    def signal(e, params={}, ruleset=nil)
-      raise "Undefined ruleset" unless @@ruleset || ruleset
-      
-      run_event(e, ruleset || @@ruleset, params)
+    ##########
+
+    def signal(e, params={})
+      run_event(e, params)
     end
 
-    def self.signal(e, params, ruleset)
-      tmp_endpoint = self.new({:ruleset => ruleset})
+    def self.signal(e, params)
+      tmp_endpoint = self.new({:ruleset => @@ruleset, :environment => @@environment})
       tmp_endpoint.signal(e, params)
     end
 
     # allow calling events directly
     def method_missing(meth, *args)
       if @@events.keys.include? meth.to_sym
-        ruleset = nil
-        params = {}
-
-        if args.first.class == Symbol
-          ruleset = args.first 
-          params = args.last if args.length > 1
-        else
-          params = args.first if args.first.class == Hash
-        end
-
-
-        return run_event(meth.to_sym, ruleset || @@ruleset, params)
-
+        return run_event(meth.to_sym, args.first)
       else
         super
       end
     end
 
     def self.method_missing(meth, *args)
-      raise "Undefined ruleset" unless args.first.class == Symbol
-      params = args.length > 1 ? args.last : {}
-      e = self.new({:ruleset => args.first})
-      e.signal(meth.to_sym, params)
+      if @@events.include? meth.to_sym 
+        ruleset = @@ruleset
+        if args.first.class == Symbol
+          ruleset = args.first 
+          params = args.length > 1 ? args.last : {}
+        else
+          params = args.first
+        end
+        e = self.new({:ruleset => ruleset})
+        e.signal(meth.to_sym, params)
+      else
+        super
+      end
     end
 
     private
 
-    def run_event(e, ruleset, params)
- 
-      # setup the parameters and call the block
-
-      if @@events.keys.include? e
-        @@events[e][:block].call(params) 
-      else
-        raise "Undefined event #{e.to_s}"
-      end
-
-
+    def run_event(e, params)
       # run the event
 
       kns_json = {"directives" => []}
       
       begin
+        # setup the parameters and call the block
+
+        if @@events.keys.include? e
+          @@events[e][:block].call(params) 
+        else
+          raise "Undefined event #{e.to_s}"
+        end
+        
         raise "Undefined Domain" unless @@domain
         
-        api_call = "https://cs.kobj.net/blue/event/#{@@domain.to_s}/#{e.to_s}/#{ruleset}"
-        puts api_call if $KNS_ENDPOINT_DEBUG
-        uri = URI.parse(api_call)
-        http_session = Net::HTTP.new(uri.host, uri.port)
-        http_session.verify_mode = OpenSSL::SSL::VERIFY_NONE
-        http_session.use_ssl = true
-    
-        headers = {
-          'Host'=>  uri.host,
-        }
-
-        headers["Cookie"] = "SESSION_ID=#{@session}" if @session && @@use_single_session
+        api_call = "https://cs.kobj.net/blue/event/#{@@domain.to_s}/#{e.to_s}/#{@ruleset}"
+ 
+        headers = {}   
+        headers[:cookies] = {"SESSION_ID" => @session} if @session && @use_session
 
         timeout(30) do
-          http_session.start { |http|
-            req = Net::HTTP::Post.new(uri.path)
-            headers.each{|key, val| req.add_field(key, val)}
-            puts "Params = \n#{params.to_url_params}" if $KNS_ENDPOINT_DEBUG
-            resp, data = http.request(req, params.to_url_params)
-            @session = parse_cookie(resp, 'SESSION_ID') 
+          params[@ruleset.to_s + ":kynetx_app_version"] = "dev" unless @environment == :production
 
-            puts 'Code = ' + resp.code if $KNS_ENDPOINT_DEBUG
-            puts 'Message = ' + resp.message if $KNS_ENDPOINT_DEBUG
-            resp.each {|key, val| puts key + ' = ' + val} if $KNS_ENDPOINT_DEBUG
-            puts "Data = \n" + data if $KNS_ENDPOINT_DEBUG
-            
+          if $KNS_ENDPOINT_DEBUG
+            puts "-- NEW REQUEST --"
+            puts "-- URL: " + api_call
+            puts "-- HEADERS:\n#{headers.inspect}"
+            puts "-- PARAMS:\n#{params.inspect}"
+          end
 
-            raise "Unexpected response from KNS (HTTP Error: #{resp.code} - #{resp.message})" unless resp.code == '200'
-            begin
-              kns_json = JSON.parse(data)
-            rescue
-              raise "Unexpected response from KNS (#{data})"
-            end
-          }
+          response = RestClient.post(api_call, params, headers)
+          raise "Unexpected response from KNS (HTTP Error: #{response.code} - #{response})" unless response.code.to_s == "200"
+
+          @session = response.cookies["SESSION_ID"]
+          begin
+            kns_json = JSON.parse(response.to_s)
+          rescue
+            raise "Unexpected response from KNS (#{response.to_s})"
+          end
+
+          if $KNS_ENDPOINT_DEBUG
+            puts "-- RESPONSE --"
+            puts "-- CODE: #{response.code}"
+            puts "-- COOKIES: #{response.cookies.inspect}"
+            puts "-- HEADERS: #{response.headers.inspect}"
+            puts "-- BODY: \n" + response.to_s
+          end
         end
       rescue Exception => e
         raise "Unable to connect to KNS. (#{e.message})"
@@ -132,7 +135,7 @@ module Kynetx
       # execute the returned directives
       directive_output = []
       kns_json["directives"].each do |d|
-        o = run_directive(d["name"].to_sym, symbolize_keys(d["options"])) if @@directives.keys.include?(d["name"].to_sym)
+        o = run_directive(d["name"].to_sym, d["options"]) if @@directives.keys.include?(d["name"].to_sym)
         directive_output.push o
       end
 
@@ -143,9 +146,9 @@ module Kynetx
 
     def run_directive(d, params)
       begin
-        return @@directives[d].call(params)
+        return @@directives[d].call(symbolize_keys(params))
       rescue Exception => e
-        puts "Error in directive (#{d.to_s}): #{e.message}\n#{e.backtrace.join("\n")}"
+        raise "Error in directive (#{d.to_s}): #{e.message}"
       end
 
     end
@@ -158,7 +161,7 @@ module Kynetx
                   when String then key.to_sym  
                   else key  
                   end  
-        new_value = case value  
+      new_value = case value  
                   when Hash then symbolize_keys(value)  
                   else value  
                   end  
@@ -167,26 +170,12 @@ module Kynetx
       }  
     end 
 
-    def parse_cookie(resp_hash, cookie)
-      cookie_str = resp_hash['set-cookie']
-      cookies = {}
-      cookie_str.split(";").map{|e| k,v = e.split('='); cookies[k] = v}
-      return cookies[cookie]
-    end
-    
+
+
   end
 
 end
 
-class Hash
-  def to_url_params
-    elements = []
-    self.each_pair do |k,v|
-      elements << "#{URI.escape(k.to_s)}=#{URI.escape(v.to_s)}"
-    end
-    elements.join('&')
-  end
 
-end
 
 

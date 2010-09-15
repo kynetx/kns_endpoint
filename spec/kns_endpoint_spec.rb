@@ -1,10 +1,13 @@
-require '../lib/kns_endpoint'
+require 'lib/kns_endpoint'
+
+
 describe Kynetx::Endpoint do
 
   before :all do
     class TestEndpoint < Kynetx::Endpoint
       domain :test_endpoint
-       
+      ruleset :a18x26
+   
       event :echo
 
       event :echo_hello  do |p|
@@ -19,11 +22,13 @@ describe Kynetx::Endpoint do
       end
     end
 
-    @endpoint = TestEndpoint.new(:ruleset => :a18x26)
+    @endpoint = TestEndpoint.new
   end
 
-  it "should set use_single_session to true by default" do
-    @endpoint.use_single_session.should == true
+  it "should set defaults" do
+    @endpoint.use_session.should == true
+    @endpoint.ruleset.should == :a18x26
+    @endpoint.environment.should == :production
   end
 
   it "event should run a simple rule" do
@@ -40,7 +45,8 @@ describe Kynetx::Endpoint do
   end
 
   it "should maintain a session for multiple calls" do
-    @endpoint.use_single_session = true
+    #$KNS_ENDPOINT_DEBUG = true
+    @endpoint.use_session = true
     session = "3adef184a0779345fd422369a4e21a25"
     @endpoint.session = session
 
@@ -50,11 +56,12 @@ describe Kynetx::Endpoint do
     @endpoint.signal(:read_entity_var)
     @endpoint.session.should eql session
 
+    #$KNS_ENDPOINT_DEBUG = false
   end
 
-  it "should get a new session every time if @@use_single_session is false" do
+  it "should get a new session every time if @@use_session is false" do
     @endpoint.session = nil
-    @endpoint.use_single_session = false
+    @endpoint.use_session = false
 
     @endpoint.signal(:read_entity_var)
     session = @endpoint.session
@@ -68,20 +75,31 @@ describe Kynetx::Endpoint do
     @endpoint.echo(:message => "Hello World").should include "Hello World"
   end
 
-  it "should allow me to specify the ruleset as a first parameter when calling the event as a method" do
-    @endpoint.echo(:a18x26, :message => "Hello World").should include "Hello World"
-  end
-
   it "should allow me to raise an event without instantiation." do
-    TestEndpoint.echo(:a18x26, :message => "Hello World").should include "Hello World"
+    TestEndpoint.echo(:message => "Hello World").should include "Hello World"
   end
 
   it "should allow me to call signal without instantiation" do
-    TestEndpoint.signal(:echo, {:message => "Hello World"}, :a18x26)
+    TestEndpoint.signal(:echo, {:message => "Hello World"})
   end
    
   it "should allow me to raise an event without instantition if the ruleset is defined." do
     TestEndpoint.echo({:message => "Hello World"}).should include "Hello World"
   end
 
+  it "should call the development version of the app" do
+    @dev_endpoint = TestEndpoint.new(:ruleset => :a18x30)
+    @dev_endpoint.echo({:message => "Hello World"}).should include "PRODUCTION"
+
+    @dev_endpoint.environment = :development
+    @dev_endpoint.echo({:message => "Hello World"}).should include "DEVELOPMENT"
+  end
+
+  it "should allow me to pass environment as an option when calling the endpoint as a class" do
+    # In order to do this you have to access the DSL directly and 
+    # overwrite the defaults. In this case, ruleset and environment.
+    TestEndpoint.ruleset :a18x30
+    TestEndpoint.environment :development
+    TestEndpoint.echo({:message => "Hello World"}).should include "DEVELOPMENT"
+  end
 end
