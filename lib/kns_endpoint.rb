@@ -82,6 +82,10 @@ module Kynetx
     def run_event(e, params)
       # run the event
 
+      # set the default params as an empty hash
+
+      params ||= {}
+
       kns_json = {"directives" => []}
       
       begin

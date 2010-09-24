@@ -2,11 +2,11 @@ require 'rake'
 
 Gem::Specification.new do |s|
   s.name = %q{kns_endpoint}
-  s.version = "0.1.1"
+  s.version = "0.1.2"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Michael Farmer"]
-  s.date = %q{2010-09-15}
+  s.date = %q{2010-09-24}
   s.email = %q{mjf@kynetx.com}
   s.extra_rdoc_files = ["LICENSE"]
   s.homepage = %q{http://github.com/kynetx/kns_endpoint}
