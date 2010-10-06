@@ -116,7 +116,11 @@ module Kynetx
             puts "-- PARAMS:\n#{params.inspect}"
           end
 
-          response = RestClient.post(api_call, params, headers)
+          response = RestClient::Resource.new(
+            api_call,
+            :timeout => @query_timeout
+          ).post(params, headers)
+
           raise "Unexpected response from KNS (HTTP Error: #{response.code} - #{response})" unless response.code.to_s == "200"
 
           @session = response.cookies["SESSION_ID"]
