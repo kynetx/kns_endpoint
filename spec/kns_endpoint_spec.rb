@@ -102,4 +102,8 @@ describe Kynetx::Endpoint do
     TestEndpoint.environment :development
     TestEndpoint.echo({:message => "Hello World"}).should include "DEVELOPMENT"
   end
+
+  it "should allow me to call the event from the class without any params"
+
+  it "should capture the logging output if logging is turned on"
 end

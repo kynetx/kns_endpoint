@@ -16,11 +16,13 @@ module Kynetx
       @environment = opts[:environment] if opts[:environment]
       @ruleset = opts[:ruleset] if opts[:ruleset]
       @use_session = opts[:use_session] if opts[:use_session]
+      @query_timeout = opts[:query_timeout] if opts[:query_timeout]
 
       # set the defaults
       @environment ||= @@environment
       @use_session ||= @@use_session
       @ruleset ||= @@ruleset
+      @query_timeout ||= 120
       raise "Undefined ruleset." unless @ruleset
     end
 
@@ -104,7 +106,7 @@ module Kynetx
         headers = {}   
         headers[:cookies] = {"SESSION_ID" => @session} if @session && @use_session
 
-        timeout(30) do
+        timeout(@query_timeout) do
           params[@ruleset.to_s + ":kynetx_app_version"] = "dev" unless @environment == :production
 
           if $KNS_ENDPOINT_DEBUG
