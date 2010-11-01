@@ -4,7 +4,7 @@ require 'json'
 module Kynetx
 
   class Endpoint
-    attr_accessor :session, :environment, :ruleset, :use_session
+    attr_accessor :session, :environment, :ruleset, :use_session, :headers
 
     @@events = {}
     @@directives = {}
@@ -23,6 +23,7 @@ module Kynetx
       @use_session ||= @@use_session
       @ruleset ||= @@ruleset
       @query_timeout ||= 120
+      @headers ||= {}
       raise "Undefined ruleset." unless @ruleset
     end
 
@@ -103,8 +104,7 @@ module Kynetx
         
         api_call = "https://cs.kobj.net/blue/event/#{@@domain.to_s}/#{e.to_s}/#{@ruleset}"
  
-        headers = {}   
-        headers[:cookies] = {"SESSION_ID" => @session} if @session && @use_session
+        @headers[:cookies] = {"SESSION_ID" => @session} if @session && @use_session
 
         timeout(@query_timeout) do
           params[@ruleset.to_s + ":kynetx_app_version"] = "dev" unless @environment == :production

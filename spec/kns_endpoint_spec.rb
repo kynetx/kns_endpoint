@@ -97,7 +97,7 @@ describe Kynetx::Endpoint do
 
   it "should allow me to pass environment as an option when calling the endpoint as a class" do
     # In order to do this you have to access the DSL directly and 
-    # overwrite the defaults. In this case, ruleset and environment.
+    # overwrite the )efaults. In this case, ruleset and environment.
     TestEndpoint.ruleset :a18x30
     TestEndpoint.environment :development
     TestEndpoint.echo({:message => "Hello World"}).should include "DEVELOPMENT"
@@ -106,4 +106,15 @@ describe Kynetx::Endpoint do
   it "should allow me to call the event from the class without any params"
 
   it "should capture the logging output if logging is turned on"
+
+  it "should expose the headers for modification" do
+    $KNS_ENDPOINT_DEBUG = true
+    @endpoint.headers = {"User-Agent" => "Ruby"}
+    @endpoint.use_session = true
+    @endpoint.echo(:message => "Hello World").should include "Hello World"
+
+    @endpoint.headers[:cookies].should_not be_nil
+    @endpoint.headers["User-Agent"].should == "Ruby"
+
+  end
 end
