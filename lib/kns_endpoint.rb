@@ -4,7 +4,7 @@ require 'json'
 module Kynetx
 
   class Endpoint
-    attr_accessor :session, :environment, :ruleset, :use_session, :headers
+    attr_accessor :session, :environment, :ruleset, :use_session, :headers, :logging, :log
 
     @@events = {}
     @@directives = {}
@@ -17,6 +17,7 @@ module Kynetx
       @ruleset = opts[:ruleset] if opts[:ruleset]
       @use_session = opts[:use_session] if opts[:use_session]
       @query_timeout = opts[:query_timeout] if opts[:query_timeout]
+      @logging = opts[:logging] if opts[:logging]
 
       # set the defaults
       @environment ||= @@environment
@@ -24,6 +25,8 @@ module Kynetx
       @ruleset ||= @@ruleset
       @query_timeout ||= 120
       @headers ||= {}
+      @logging ||= false
+      @log = []
       raise "Undefined ruleset." unless @ruleset
     end
 
@@ -130,17 +133,25 @@ module Kynetx
             raise "Unexpected response from KNS (#{response.to_s})"
           end
 
+          # extract the logging
+          if @logging 
+            @log = response.split("\n")
+            @log.pop
+          end
+
           if $KNS_ENDPOINT_DEBUG
             puts "-- RESPONSE --"
             puts "-- CODE: #{response.code}"
             puts "-- COOKIES: #{response.cookies.inspect}"
             puts "-- HEADERS: #{response.headers.inspect}"
             puts "-- BODY: \n" + response.to_s
+            puts "-- LOG: \n" + @log.join("\n")
           end
         end
       rescue Exception => e
         raise "Unable to connect to KNS. (#{e.message})"
       end
+
 
       # execute the returned directives
       directive_output = []

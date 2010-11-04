@@ -105,10 +105,16 @@ describe Kynetx::Endpoint do
 
   it "should allow me to call the event from the class without any params"
 
-  it "should capture the logging output if logging is turned on"
+  it "should capture the logging output if logging is turned on" do
+    $KNS_ENDPOINT_DEBUG = true
+    @endpoint.logging = true
+    @endpoint.echo(:message => "Hello World").should include "Hello World"
+    @endpoint.log.should be_kind_of Array
+    @endpoint.log.should_not be_empty
+  end
+  
 
   it "should expose the headers for modification" do
-    $KNS_ENDPOINT_DEBUG = true
     @endpoint.headers = {"User-Agent" => "Ruby"}
     @endpoint.use_session = true
     @endpoint.echo(:message => "Hello World").should include "Hello World"
