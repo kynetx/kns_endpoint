@@ -32,6 +32,7 @@ describe Kynetx::Endpoint do
   end
 
   it "event should run a simple rule" do
+    @endpoint.signal(:echo, :message => "Hello World")
     @endpoint.signal(:echo, :message => "Hello World").should include("Hello World")
   end
 
@@ -46,16 +47,20 @@ describe Kynetx::Endpoint do
 
   it "should maintain a session for multiple calls" do
     #$KNS_ENDPOINT_DEBUG = true
+    #@endpoint.logging = true
+
     @endpoint.use_session = true
-    session = "3adef184a0779345fd422369a4e21a25"
-    @endpoint.session = session
+    session = nil
+
+    @endpoint.signal(:read_entity_var)
+    session = @endpoint.session
 
     @endpoint.signal(:read_entity_var)
     @endpoint.session.should eql session
 
     @endpoint.signal(:read_entity_var)
     @endpoint.session.should eql session
-
+    #@endpoint.logging = false
     #$KNS_ENDPOINT_DEBUG = false
   end
 
@@ -68,7 +73,6 @@ describe Kynetx::Endpoint do
 
     @endpoint.signal(:read_entity_var)
     @endpoint.session.should_not eql session
-
   end
 
   it "should allow me to call events as methods." do
@@ -103,10 +107,12 @@ describe Kynetx::Endpoint do
     TestEndpoint.echo({:message => "Hello World"}).should include "DEVELOPMENT"
   end
 
-  it "should allow me to call the event from the class without any params"
+  it "should allow me to call the event from the class without any params" do
+    TestEndpoint.ruleset :a18x30
+    TestEndpoint.echo.should include "DEVELOPMENT"
+  end
 
   it "should capture the logging output if logging is turned on" do
-    $KNS_ENDPOINT_DEBUG = true
     @endpoint.logging = true
     @endpoint.echo(:message => "Hello World").should include "Hello World"
     @endpoint.log.should be_kind_of Array

@@ -3,7 +3,7 @@ ruleset a18x26 {
     name "Test Ruby Endpoint"
     description << Test Ruby Endpoint >>
     author "Michael Farmer"
-    logging off
+    logging on
   }
 
   rule first_rule is active {

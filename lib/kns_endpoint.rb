@@ -1,5 +1,6 @@
 require 'rest_client'
 require 'json'
+require 'logger'
 
 module Kynetx
 
@@ -11,6 +12,7 @@ module Kynetx
     @@use_session = true;
     @@environment = :production
     @@ruleset = nil
+    RestClient.log = Logger.new(STDOUT) if $KNS_ENDPOINT_DEBUG
 
     def initialize(opts={})
       @environment = opts[:environment] if opts[:environment]
@@ -20,6 +22,9 @@ module Kynetx
       @logging = opts[:logging] if opts[:logging]
 
       # set the defaults
+      @events = @@events
+      @directives = @@directives
+      @domain = @@domain
       @environment ||= @@environment
       @use_session ||= @@use_session
       @ruleset ||= @@ruleset
@@ -28,6 +33,7 @@ module Kynetx
       @logging ||= false
       @log = []
       raise "Undefined ruleset." unless @ruleset
+      raise "Undefined Domain" unless @domain
     end
 
     ## Endpoint DSL
@@ -97,17 +103,21 @@ module Kynetx
       begin
         # setup the parameters and call the block
 
-        if @@events.keys.include? e
-          @@events[e][:block].call(params) 
+        if @events.keys.include? e
+          @events[e][:block].call(params) 
         else
           raise "Undefined event #{e.to_s}"
         end
         
-        raise "Undefined Domain" unless @@domain
         
-        api_call = "https://cs.kobj.net/blue/event/#{@@domain.to_s}/#{e.to_s}/#{@ruleset}"
- 
-        @headers[:cookies] = {"SESSION_ID" => @session} if @session && @use_session
+        api_call = "https://cs.kobj.net/blue/event/#{@domain.to_s}/#{e.to_s}/#{@ruleset}"
+
+        if @use_session && @session
+          @headers[:cookies] = {"SESSION_ID" => @session, "domain" => "kobj.net"}
+        else
+        #  @session = nil
+          @headers = {}
+        end
 
         timeout(@query_timeout) do
           params[@ruleset.to_s + ":kynetx_app_version"] = "dev" unless @environment == :production
@@ -115,6 +125,8 @@ module Kynetx
           if $KNS_ENDPOINT_DEBUG
             puts "-- NEW REQUEST --"
             puts "-- URL: " + api_call
+            puts "-- SESSION: #{@session.inspect}"
+            puts "-- USE_SESSION: #{@use_session.inspect}"
             puts "-- HEADERS:\n#{headers.inspect}"
             puts "-- PARAMS:\n#{params.inspect}"
           end
@@ -142,6 +154,7 @@ module Kynetx
           if $KNS_ENDPOINT_DEBUG
             puts "-- RESPONSE --"
             puts "-- CODE: #{response.code}"
+            puts "-- SESSION: #{@session}"
             puts "-- COOKIES: #{response.cookies.inspect}"
             puts "-- HEADERS: #{response.headers.inspect}"
             puts "-- BODY: \n" + response.to_s
@@ -156,7 +169,7 @@ module Kynetx
       # execute the returned directives
       directive_output = []
       kns_json["directives"].each do |d|
-        o = run_directive(d["name"].to_sym, d["options"]) if @@directives.keys.include?(d["name"].to_sym)
+        o = run_directive(d["name"].to_sym, d["options"]) if @directives.keys.include?(d["name"].to_sym)
         directive_output.push o
       end
 
@@ -167,7 +180,7 @@ module Kynetx
 
     def run_directive(d, params)
       begin
-        return @@directives[d].call(symbolize_keys(params))
+        return @directives[d].call(symbolize_keys(params))
       rescue Exception => e
         raise "Error in directive (#{d.to_s}): #{e.message}"
       end
