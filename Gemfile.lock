@@ -1,6 +1,7 @@
 GEM
   remote: http://rubygems.org/
   specs:
+    awesome_print (0.3.1)
     configuration (1.1.0)
     json (1.2.4)
     krl (0.1.67)
@@ -32,6 +33,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  awesome_print
   json (~> 1.2.4)
   krl
   rest-client

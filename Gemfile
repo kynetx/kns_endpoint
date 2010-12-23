@@ -7,4 +7,5 @@ group :test do
   gem "rspec"
   gem "rspactor"
   gem "krl"
+  gem "awesome_print"
 end

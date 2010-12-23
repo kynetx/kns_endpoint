@@ -1,10 +1,13 @@
 require 'lib/kns_endpoint'
+require 'ap'
 
 
 describe Kynetx::Endpoint do
 
   before :all do
     class TestEndpoint < Kynetx::Endpoint
+      attr_accessor :pre_event, :post_directive
+
       domain :test_endpoint
       ruleset :a18x26
    
@@ -19,10 +22,32 @@ describe Kynetx::Endpoint do
 
       directive :say do |d|
         d[:message]
+        #status = :say
+      end
+
+      def init
+        @pre_event = :init
+        @post_directive = :init
+      end
+
+      # before hook
+      def before_echo_hello
+        @pre_event = :echo_hello
+      end
+
+      def after_say(d)
+        @post_directive = :done
       end
     end
 
-    @endpoint = TestEndpoint.new
+    begin
+      @endpoint = TestEndpoint.new
+    rescue => e
+      ap e.message
+      ap e.backtrace
+      raise e
+    end
+      
   end
 
   it "should set defaults" do
@@ -128,5 +153,21 @@ describe Kynetx::Endpoint do
     @endpoint.headers[:cookies].should_not be_nil
     @endpoint.headers["User-Agent"].should == "Ruby"
 
+  end
+
+  it "should allow me to access defined methods" do
+    @endpoint.init
+    @endpoint.pre_event.should eql :init
+    @endpoint.post_directive.should eql :init
+  end
+
+  it "should allow me to use a before_* event hook" do
+    @endpoint.echo_hello(:message => "World")
+    @endpoint.pre_event.should eql :echo_hello
+  end
+
+  it "should allow me to use an after_* directive hook" do
+    @endpoint.echo_hello(:message => "World")
+    @endpoint.post_directive.should eql :done
   end
 end
