@@ -131,7 +131,7 @@ module Kynetx
         end
 
         timeout(@query_timeout) do
-          params[@ruleset.to_s + ":kynetx_app_version"] = "dev" unless @environment == :production
+          params[@ruleset.to_s + ":kinetic_app_version"] = "dev" unless @environment == :production
 
           if $KNS_ENDPOINT_DEBUG
             puts "-- NEW REQUEST --"
